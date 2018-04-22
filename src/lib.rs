@@ -66,7 +66,7 @@ mod util;
 
 use client::{ClientParams, ClientAuth, ClientProto, ClientSecurity, ClientTlsParams};
 use futures::{future, Future, Sink};
-use native_tls::{TlsConnector};
+use native_tls::{Result as TlsResult, TlsConnector};
 use request::{ClientId, Mailbox, Request as SmtpRequest};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -198,6 +198,15 @@ impl MailerBuilder {
     pub fn set_tls_connector(mut self, tls_connector: TlsConnector) -> Self {
         self.tls_connector = Some(tls_connector);
         self
+    }
+
+    /// Enable TLS using the `STARTTLS` command, and use default connector (native).
+    ///
+    /// By default, connections do not use TLS.
+    pub fn use_default_tls_connector(self) -> TlsResult<Self> {
+        let connector = TlsConnector::builder()
+            .and_then(|builder| builder.build())?;
+        Ok(self.set_tls_connector(connector))
     }
 
     /// Transform this builder into a `Mailer`.
