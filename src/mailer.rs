@@ -39,7 +39,7 @@ impl Mailer {
         //self.send_raw(return_path, recipients, body.into_mail_body(handle), handle)
         sendmail(TokioTcpClient::new(ClientProto(self.0.params.clone()))
                  .connect(&self.0.addrs[0], handle),
-                 return_path, recipients, body, handle)
+                 return_path, recipients, body)
     }
 }
 

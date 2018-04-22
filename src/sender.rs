@@ -3,7 +3,6 @@ use mailbody::{MailBody, IntoMailBody};
 use request::{Mailbox, Request as SmtpRequest};
 use response::{Response as SmtpResponse};
 use futures::{future, Future};
-use tokio_core::reactor::{Handle};
 use tokio_proto::streaming::{Message, Body};
 use tokio_service::{Service};
 
@@ -18,14 +17,13 @@ pub fn sendmail<B, C, S>(
     return_path: Mailbox,
     recipients: Vec<Mailbox>,
     body: B,
-    handle: &Handle
 ) -> Box<Future<Item = (), Error = IoError>>
 where B: IntoMailBody,
       C: Future<Item = S, Error = IoError> + 'static,
       S: Service<Request = SmtpRequestMessage, Response = SmtpResponseMessage, Error = IoError>,
       S::Future: 'static,
 {
-    let body = body.into_mail_body(handle);
+    let body = body.into_mail_body();
     
     // FIXME: Iterate addrs.
     Box::new(
