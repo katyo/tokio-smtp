@@ -64,8 +64,10 @@ pub mod client;
 pub mod request;
 pub mod response;
 pub mod mailer;
+pub mod sender;
 mod util;
 
 pub use mailbody::{MailBody, IntoMailBody};
 pub use client::{ClientParams, ClientAuth, ClientSecurity, ClientTlsParams};
 pub use mailer::{Mailer, MailerBuilder};
+pub use sender::{sendmail};

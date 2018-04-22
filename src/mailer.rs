@@ -1,15 +1,14 @@
-use mailbody::{MailBody, IntoMailBody};
+use mailbody::{IntoMailBody};
 use client::{ClientParams, ClientAuth, ClientProto, ClientSecurity, ClientTlsParams};
-use futures::{future, Future};
+use futures::{Future};
 use native_tls::{Result as TlsResult, TlsConnector};
-use request::{ClientId, Mailbox, Request as SmtpRequest};
-use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
+use request::{ClientId, Mailbox};
+use std::io::{Error as IoError, Result as IoResult};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc};
 use tokio_core::reactor::{Handle};
 use tokio_proto::{TcpClient as TokioTcpClient};
-use tokio_proto::streaming::{Message};
-use tokio_service::{Service};
+use sender::{sendmail};
 
 struct MailerParams {
     addrs: Vec<SocketAddr>,
@@ -37,48 +36,10 @@ impl Mailer {
     /// Send an email.
     pub fn send<B: IntoMailBody>(&self, return_path: Mailbox, recipients: Vec<Mailbox>, body: B, handle: &Handle)
             -> Box<Future<Item = (), Error = IoError>> {
-        self.send_raw(return_path, recipients, body.into_mail_body(handle), handle)
-    }
-
-    fn send_raw(&self, return_path: Mailbox, recipients: Vec<Mailbox>, body: MailBody, handle: &Handle)
-            -> Box<Future<Item = (), Error = IoError>> {
-        // FIXME: Iterate addrs.
-        Box::new(TokioTcpClient::new(ClientProto(self.0.params.clone()))
-            .connect(&self.0.addrs[0], handle)
-            .and_then(move |service| {
-                let mut reqs = Vec::with_capacity(4);
-                reqs.push(service.call(
-                    Message::WithoutBody(SmtpRequest::Mail {
-                        from: return_path,
-                        params: vec![],
-                    })
-                ));
-                for recipient in recipients {
-                    reqs.push(service.call(
-                        Message::WithoutBody(SmtpRequest::Rcpt {
-                            to: recipient,
-                            params: vec![],
-                        })
-                    ));
-                }
-                reqs.push(service.call(
-                    Message::WithBody(SmtpRequest::Data, body)
-                ));
-                reqs.push(service.call(
-                    Message::WithoutBody(SmtpRequest::Quit)
-                ));
-                future::join_all(reqs)
-            })
-            .and_then(|responses| {
-                for response in responses {
-                    let response = response.into_inner();
-                    if !response.code.severity.is_positive() {
-                        return future::err(IoError::new(IoErrorKind::Other,
-                            format!("bad smtp response {}", response.code)))
-                    }
-                }
-                future::ok(())
-            }))
+        //self.send_raw(return_path, recipients, body.into_mail_body(handle), handle)
+        sendmail(TokioTcpClient::new(ClientProto(self.0.params.clone()))
+                 .connect(&self.0.addrs[0], handle),
+                 return_path, recipients, body, handle)
     }
 }
 
